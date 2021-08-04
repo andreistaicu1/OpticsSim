@@ -116,15 +116,8 @@ def create_lenses(num_lenses):
 def draw_lenses(list_lenses, canvas_s):
     for lens_index in range(len(list_lenses)):
         item = list_lenses[lens_index]
-        if lens_index == 0:
-            canvas_s.create_line(item.edge_1.x, item.edge_1.y, item.edge_2.x, item.edge_2.y, fill='blue')
-            draw_circle(canvas_s, 'blue', 8, (item.focal_point.x, item.focal_point.y))
-            draw_circle(canvas_s, 'blue', 2, (item.center_lens.x, item.center_lens.y))
-            draw_circle(canvas_s, 'red', 3, (item.edge_1.x, item.edge_1.y))
-            draw_circle(canvas_s, 'black', 3, (item.edge_2.x, item.edge_2.y))
-        else:
-            canvas_s.create_line(item.edge_1.x, item.edge_1.y, item.edge_2.x, item.edge_2.y, fill='black')
-            draw_circle(canvas_s, 'black', 2, (item.focal_point.x, item.focal_point.y))
+        canvas_s.create_line(item.edge_1.x, item.edge_1.y, item.edge_2.x, item.edge_2.y, fill='black')
+        draw_circle(canvas_s, 'black', 2, (item.focal_point.x, item.focal_point.y))
 
 
 def get_dict_focal_points(list_lenses):
@@ -166,6 +159,8 @@ def key_handler(event):
     global handle_list
     global current_angle
 
+    interval = (2 * m.pi) / sample
+
     if event.keysym == 'q':
         quit()
 
@@ -174,6 +169,13 @@ def key_handler(event):
             c.delete(thing)
         handle_list = []
         new_angle = (current_angle + 1) % sample
+
+        unit = Vector(1, 0)
+        unit.rotate(new_angle * interval)
+        unit.scale(-1 * radius_circle - 30)
+        unit = unit.add(Vector(400, 400))
+        handle_list.append(c.create_line(400, 400, unit.x, unit.y, fill='blue'))
+
         points = focal_point_dict[new_angle]
         for item in points:
             handle_list.append(draw_circle(c, 'red', 2, (item.x, item.y)))
@@ -186,6 +188,13 @@ def key_handler(event):
         new_angle = current_angle - 1
         if new_angle < 0:
             new_angle = sample - 1
+
+        unit = Vector(1, 0)
+        unit.rotate(new_angle * interval)
+        unit.scale(-1 * radius_circle - 30)
+        unit = unit.add(Vector(400, 400))
+        handle_list.append(c.create_line(400, 400, unit.x, unit.y, fill='blue'))
+
         points = focal_point_dict[new_angle]
         for item in points:
             handle_list.append(draw_circle(c, 'red', 2, (item.x, item.y)))
