@@ -1,16 +1,18 @@
 from light import *
 import xlwt
 
-lens_count = 20
-angle_accepted = m.pi / 8
+lens_count = 24
+angle_targeted = m.pi / 10
 sample = 400
 radius_circle = 350
 lens_height = 1
 focal_length_discrete = 250
 size = Vector(800, 800)
+inner_focal_length_factor = 10
+inner_lens_size = 50
 
 
-def can_consider(angle):
+def can_consider(angle, angle_accepted):
     return (angle_accepted > angle >= 0) or ((-1 * angle_accepted) < angle <= 0)
 
 
@@ -21,6 +23,7 @@ class Lens:
         self.focal_length = focal_length
         self.edge_1 = edge_1
         self.edge_2 = edge_2
+        self.area_dic = {}
 
         edge_2.scale(-1)
         lens_axis_v = edge_1.add(edge_2)
@@ -46,12 +49,20 @@ class Lens:
         return focal_point_v
 
     def mark_area(self, lens_num, angle, sheet, angle_index):
-        if not can_consider(angle):
+        if not can_consider(angle, angle_targeted):
             sheet.write(angle_index + 1, lens_num + 1, '0')
             return
 
         area = self.incident_area(angle)
         sheet.write(angle_index + 1, lens_num + 1, str(area))
+
+    def mark_self_area(self, angle, angle_index, angle_max):
+        if not can_consider(angle, angle_max):
+            self.area_dic[angle_index] = 0
+            return
+
+        area = self.incident_area(angle)
+        self.area_dic[angle_index] = area
 
 
 def fill_excel_sheet(lenses_list):
@@ -66,8 +77,10 @@ def fill_excel_sheet(lenses_list):
 
             unit = Vector(1, 0)
             unit.rotate(angle)
-            dot = (lenses_list[index_lens].lens_face_dir.x * unit.x) + (lenses_list[index_lens].lens_face_dir.y * unit.y)
-            cross = (lenses_list[index_lens].lens_face_dir.x * unit.y) - (lenses_list[index_lens].lens_face_dir.y * unit.x)
+            dot = (lenses_list[index_lens].lens_face_dir.x * unit.x) + (
+                    lenses_list[index_lens].lens_face_dir.y * unit.y)
+            cross = (lenses_list[index_lens].lens_face_dir.x * unit.y) - (
+                    lenses_list[index_lens].lens_face_dir.y * unit.x)
             if dot > 1:
                 dot = 1
             elif dot < -1:
@@ -116,7 +129,7 @@ def create_lenses(num_lenses):
 def draw_lenses(list_lenses, canvas_s):
     for lens_index in range(len(list_lenses)):
         item = list_lenses[lens_index]
-        canvas_s.create_line(item.edge_1.x, item.edge_1.y, item.edge_2.x, item.edge_2.y, fill='black')
+        canvas_s.create_line(item.edge_1.x, item.edge_1.y, item.edge_2.x, item.edge_2.y, fill='black', width=5)
         draw_circle(canvas_s, 'black', 2, (item.focal_point.x, item.focal_point.y))
 
 
@@ -142,7 +155,7 @@ def get_dict_focal_points(list_lenses):
             if cross < 0:
                 angle_to_lens *= -1
 
-            if can_consider(angle_to_lens):
+            if can_consider(angle_to_lens, angle_targeted):
                 focal_point_move = single_lens.calculate_focal_point_adjust(angle_to_lens)
                 true_focal = single_lens.focal_point.add(focal_point_move)
                 values.append(true_focal)
@@ -152,6 +165,34 @@ def get_dict_focal_points(list_lenses):
         focal_dict[i] = values
 
     return focal_dict
+
+
+def draw_inner_lenses(list_of_focal, angle_light, ray):
+    interval = (2 * m.pi) / sample
+    un_added = []
+
+    for item in list_of_focal[angle_light]:
+        if item != 0:
+            un_added.append(item.add(Vector(-1 * 400, -1 * 400)))
+
+    normal_to_ray = Vector(ray.x - 400, ray.y - 400)
+    normal_to_ray.scale(-1 / normal_to_ray.magnitude())
+    normal_to_ray.scale(focal_length_discrete / inner_focal_length_factor)
+    normal_to_ray = normal_to_ray.add(Vector(400, 400))
+
+    width = Vector(inner_lens_size / 2, 0)
+    width.rotate(angle_light * interval)
+    width.rotate(m.pi / 2)
+
+    final = []
+
+    for item in un_added:
+        inner_center = item.add(normal_to_ray)
+        edge_1 = inner_center.add(Vector(-1 * width.x, -1 * width.y))
+        edge_2 = inner_center.add(width)
+        final.append((edge_1, edge_2))
+
+    return final
 
 
 def key_handler(event):
@@ -174,11 +215,18 @@ def key_handler(event):
         unit.rotate(new_angle * interval)
         unit.scale(-1 * radius_circle - 30)
         unit = unit.add(Vector(400, 400))
-        handle_list.append(c.create_line(400, 400, unit.x, unit.y, fill='blue'))
+        handle_list.append(c.create_line(400, 400, unit.x, unit.y, fill='blue', width=5))
 
         points = focal_point_dict[new_angle]
         for item in points:
             handle_list.append(draw_circle(c, 'red', 2, (item.x, item.y)))
+
+        points = draw_inner_lenses(focal_point_dict, new_angle, unit)
+
+        for coordinates in points:
+            (one, two) = coordinates
+            handle_list.append(c.create_line(one.x, one.y, two.x, two.y, fill='red', width=5))
+
         current_angle = new_angle
 
     if event.keysym == 'd':
@@ -193,11 +241,18 @@ def key_handler(event):
         unit.rotate(new_angle * interval)
         unit.scale(-1 * radius_circle - 30)
         unit = unit.add(Vector(400, 400))
-        handle_list.append(c.create_line(400, 400, unit.x, unit.y, fill='blue'))
+        handle_list.append(c.create_line(400, 400, unit.x, unit.y, fill='blue', width=5))
 
         points = focal_point_dict[new_angle]
         for item in points:
             handle_list.append(draw_circle(c, 'red', 2, (item.x, item.y)))
+
+        points = draw_inner_lenses(focal_point_dict, new_angle, unit)
+
+        for coordinates in points:
+            (one, two) = coordinates
+            handle_list.append(c.create_line(one.x, one.y, two.x, two.y, fill='red', width=5))
+
         current_angle = new_angle
 
 

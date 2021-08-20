@@ -60,7 +60,7 @@ def draw_circle(canvas_s, color, radius, center):
     start_y = y - radius
     finish_x = x + radius
     finish_y = y + radius
-    return canvas_s.create_oval(start_x, start_y, finish_x, finish_y, outline=color)
+    return canvas_s.create_oval(start_x, start_y, finish_x, finish_y, outline=color, width=10)
 
 
 def generate_plot(canvas_s, sample_size, sample_length, torus_lens):
