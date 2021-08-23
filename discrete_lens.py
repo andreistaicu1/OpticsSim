@@ -1,8 +1,8 @@
 from light import *
 import xlwt
 
-lens_count = 24
-angle_targeted = m.pi / 10
+lens_count = 8
+angle_targeted = m.pi / 8
 sample = 400
 radius_circle = 350
 lens_height = 1
@@ -67,7 +67,7 @@ class Lens:
 
 def fill_excel_sheet(lenses_list):
     work = xlwt.Workbook()
-    sheet1 = work.add_sheet('First sample')
+    sheet1 = work.add_sheet('first_sample')
 
     interval = (2 * m.pi) / sample
     for i in range(sample):
